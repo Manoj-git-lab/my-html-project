@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Happy Diwali – ASCII Diya</title>
+<style>
+:root{color-scheme:dark;--gold:#ffc83d;--bg:#000;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:#fff;font-family:Georgia,'Times New Roman',serif}
+#welcome,#scene{height:100%;width:100%}
+#welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;background:radial-gradient(circle at 50% 40%,#3a0f05 0%,#120302 45%,#000 80%)}
+#welcome h1{font-size:clamp(34px,8vw,64px);margin:0;background:linear-gradient(90deg,#ff7a18,#ffd84d,#ff7a18);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:1px}
+#welcome p{margin:0;color:#e8b98a;font-size:clamp(15px,3.6vw,20px)}
+#welcome input{width:min(380px,86vw);padding:14px 18px;font-size:20px;text-align:center;border-radius:40px;border:2px solid #ff9a2e;background:#1a0803;color:#ffe9b0;outline:none;font-family:inherit}
+#welcome input:focus{box-shadow:0 0 22px #ff8a1f88}
+button{cursor:pointer;font-family:inherit;border:0;border-radius:40px;padding:13px 30px;font-size:18px;font-weight:bold;color:#2a0d00;background:linear-gradient(90deg,#ff9a2e,#ffd84d);box-shadow:0 0 22px #ff8a1f77}
+button:hover{filter:brightness(1.1)}
+#scene{display:none;flex-direction:column}
+header{text-align:center;padding:14px 10px 4px}
+header h2{margin:0;font-size:clamp(28px,6.5vw,54px);background:linear-gradient(90deg,#ff7a18,#ffe27a,#ff7a18);-webkit-background-clip:text;background-clip:text;color:transparent}
+header .nm{margin-top:4px;font-size:clamp(20px,4.5vw,34px);color:#7be8ff;text-shadow:0 0 14px #00b7ff88;word-break:break-word}
+header .sub{color:#c99a6a;font-size:clamp(12px,2.6vw,15px);margin-top:2px}
+#stage{flex:1;min-height:0;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#back{position:absolute;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));padding:8px 16px;font-size:14px;opacity:.85}
+</style>
+</head>
+<body>
+<div id="welcome">
+  <h1>Happy Diwali</h1>
+  <p>Tell us your name to light your diya ✨</p>
+  <input id="name" type="text" maxlength="30" placeholder="Enter your name" autocomplete="off">
+  <button id="go">Light the Diya</button>
+</div>
+<div id="scene">
+  <header>
+    <h2>Happy Diwali</h2>
+    <div class="nm" id="who"></div>
+    <div class="sub">Shubh Deepavali – may your life glow with light &amp; joy</div>
+  </header>
+  <div id="stage"><canvas id="cv"></canvas><button id="back">Change name</button></div>
+</div>
+<script>
+(function(){
+var TAU=Math.PI*2, $=function(i){return document.getElementById(i)};
+var FIRE=[[0,24,2,2],[.14,92,6,8],[.3,160,22,10],[.46,214,62,8],[.62,255,112,10],[.76,255,168,24],[.88,255,218,70],[1,255,248,214]];
+var ACC=[[0,0,24,80],[.4,0,96,235],[.75,0,215,255],[1,200,255,255]];
+function ramp(st,n){var o=[];for(var i=0;i<n;i++){var x=i/(n-1),k=1;while(k<st.length-1&&st[k][0]<x)k++;var a=st[k-1],b=st[k],f=(x-a[0])/(b[0]-a[0]);o.push('rgb('+Math.round(a[1]+(b[1]-a[1])*f)+','+Math.round(a[2]+(b[2]-a[2])*f)+','+Math.round(a[3]+(b[3]-a[3])*f)+')')}return o}
+var FR=ramp(FIRE,48),AR=ramp(ACC,20);
+var GRP=[".,",":;","+*","xX#","%@"],EDG=[.07,.2,.36,.58,.8];
+function ss(a,b,x){var t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t)}
+function cl(x,a,b){return x<a?a:x>b?b:x}
+function flow(a,b,t){return(Math.sin(a*1.7+b*1.1+t*1.9)+Math.sin(a*3.3-b*2.1-t*2.7+1.3)+Math.sin(a*5.9+b*3.7+t*3.9+2.1))/3}
+var R=.78,YR=-.2,D=.46,P=2.1,RB=.1,FT=-.64,FB=-.77,YW=YR+.02,H0=.98,W0=.2;
+function ev(X,Y){
+  var ax=Math.abs(X),below=Y<=YR,g=Math.pow(ax/R,P)+Math.pow(Math.max(YR-Y,0)/D,2),body=below&&g<=1;
+  var ell=Math.pow(ax/(.98*R),1.8)+Math.pow((Y-YR)/RB,2),rim=ell<=1;
+  var ft=cl((FT-Y)/(FT-FB),0,1),fhw=.22+.15*Math.pow(ft,1.6),foot=Y<=FT&&Y>=FB&&ax<=fhw;
+  if(!(body||rim||foot))return null;
+  var v=cl((Y-(YR-D))/D,0,1),h=.4+.34*Math.pow(v,1.2)+.12*v*Math.exp(-Math.pow(X/.5,2));
+  h+=.4*Math.exp(-(Math.pow((X+.42*R)/.22,2)+Math.pow((Y-(YR-.14))/.06,2)))+.18*Math.exp(-(Math.pow((X-.5*R)/.15,2)+Math.pow((Y-(YR-.2))/.045,2)));
+  var yb=YR-.21;
+  if(Math.abs(Y-yb)<.026&&Math.abs(((X/.105)%1+1)%1-.5)<.21&&g<.72)h=.92;
+  if(Math.abs(Y-(yb+.075))<.011&&g<.85)h*=.55;
+  if(foot&&!body)h=.3+.28*(1-ft);
+  if(rim&&ell>.6)h=below?.9:.55;
+  if(rim&&ell<=.6)h=.8+.18*Math.exp(-Math.pow(X/.2,2));
+  return h;
+}
+function grow_h(t,gr,b){return H0*gr*(1+.055*Math.sin(TAU*1.9*t+.5)+.04*Math.sin(TAU*3.7*t+1.7)+.025*Math.sin(TAU*7.3*t+.2))*(1+.1*b)}
+function sway(s,t,gr){var c=cl(s,0,1);return gr*Math.pow(c,1.5)*(.05*Math.sin(TAU*.55*t+2.4*c)+.032*Math.sin(TAU*1.35*t+4.3*c+1)+.016*Math.sin(TAU*3.1*t+7*c+2))}
+function hw(s,t,gr){var c=cl(s,0,1),b=Math.pow(Math.max(Math.sin(Math.PI*Math.pow(c,.62)),0),.9);return Math.max(W0*Math.pow(gr,.8)*b*(1+.14*flow(c*3,0,t*2.3)),.01)}
+function prof(u,s){var c=cl(s,0,1);return(.74*Math.exp(-Math.pow(u/.98,4))+.2*Math.exp(-Math.pow(u/1.7,2))+.34*Math.exp(-Math.pow(u/.5,2))*(1-.75*c))*(1-.25*c*c)}
+
+var cv=$('cv'),ctx=cv.getContext('2d'),CW=8,CH=16,W=0,Hh=0,raf=0,t0=0,last=0,burst=0;
+var heatB,edgeB,insB,rv,r1,r2,r3,ph,rate,X,Y,unit,cx,cy,sparks=[];
+function setup(){
+  var st=$('stage'),w=st.clientWidth,h=st.clientHeight,dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=w*dpr;cv.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  W=Math.max(10,Math.floor(w/CW));Hh=Math.max(8,Math.floor(h/CH));
+  var n=W*Hh;unit=Math.max(4,Math.min(Hh/2,W/4))*.97;cx=(W-1)/2;cy=(Hh-1)/2;
+  X=new Float32Array(n);Y=new Float32Array(n);heatB=new Float32Array(n);insB=new Uint8Array(n);edgeB=new Uint8Array(n);
+  rv=new Float32Array(n);r1=new Float32Array(n);r2=new Float32Array(n);r3=new Float32Array(n);ph=new Float32Array(n);rate=new Float32Array(n);
+  for(var r=0;r<Hh;r++)for(var c=0;c<W;c++){var i=r*W+c;
+    X[i]=(c-cx)*.5/unit;Y[i]=(cy-r)/unit;r1[i]=Math.random();r2[i]=Math.random();r3[i]=Math.random();ph[i]=Math.random()*TAU;rate[i]=1.5+Math.random()*5.5;
+    var h0=ev(X[i],Y[i]);if(h0!==null){insB[i]=1;heatB[i]=h0}
+    rv[i]=.65*Math.min(Math.hypot(X[i]*.85,Y[i]+.15)/1.05,1.3)+.35*r1[i];}
+  for(r=0;r<Hh;r++)for(c=0;c<W;c++){i=r*W+c;if(!insB[i])continue;
+    var o=(r==0||!insB[i-W]||r==Hh-1||!insB[i+W]||c==0||!insB[i-1]||c==W-1||!insB[i+1]);
+    if(o){edgeB[i]=1;heatB[i]=.24+.36*heatB[i]}}
+  ctx.font='bold 14px "Courier New",Consolas,monospace';ctx.textBaseline='top';
+}
+function emit(n,t,gr,str){
+  for(var k=0;k<n&&sparks.length<90;k++){
+    var s=.05+Math.random()*.65,u=(Math.random()+Math.random()+Math.random()-1.5)*.7;
+    sparks.push({x:sway(s,t,gr)+u*hw(s,t,gr),y:YW+s*grow_h(t,gr,burst),vx:(Math.random()-.5)*.07*str,vy:(.1+Math.random()*.4)*str,l:(.9+Math.random()*1.9)*str,m:0,ph:Math.random()*TAU,a:Math.random()<.07});
+    sparks[sparks.length-1].m=sparks[sparks.length-1].l;
+  }
+}
+function frame(now){
+  raf=requestAnimationFrame(frame);
+  var t=(now-t0)/1000,dt=Math.min((now-last)/1000,.1);last=now;
+  var gr=.12+.88*ss(1.2,6.5,t),fg=ss(.3,6,t),gl=ss(.8,6,t);
+  burst*=Math.exp(-dt/.55);
+  if(t>7&&Math.random()<.3*dt){burst=1;emit(10,t,gr,1.5)}
+  if(t>1.5)emit(Math.random()<gr*gr*dt*30?1:0,t,gr,1);
+  var energy=1+.16*burst,flick=.9+.05*Math.sin(TAU*3.3*t+1)+.03*Math.sin(TAU*7.9*t)+.02*Math.sin(TAU*13.1*t+2);
+  var light=cl(flick+.1*burst,.8,1.15),hf=Math.max(grow_h(t,gr,burst),.001);
+  var sp=new Float32Array(W*Hh);
+  for(var k=sparks.length-1;k>=0;k--){var p=sparks[k];p.l-=dt;if(p.l<=0){sparks.splice(k,1);continue}
+    p.x+=(p.vx+.045*Math.sin(TAU*4*t+p.ph))*dt;p.y+=p.vy*dt;
+    var c=Math.round(cx+2*unit*p.x),r=Math.round(cy-unit*p.y);
+    if(r>=0&&r<Hh&&c>=0&&c<W){var i=r*W+c,h=Math.pow(p.l/p.m,.85)*(.85+.15*Math.sin(TAU*5*t+p.ph));if(h>sp[i])sp[i]=h}}
+  ctx.fillStyle='#000';ctx.fillRect(0,0,cv.width,cv.height);
+  var last_fill='';
+  for(var r=0;r<Hh;r++)for(var c=0;c<W;c++){
+    var i=r*W+c,x=X[i],y=Y[i],s=(y-YW)/hf,sc=cl(s,0,1),w=hw(sc,t,gr);
+    var u=Math.abs(x-sway(sc,t,gr))/w;u*=1+.22*flow(x*6,y*6.5-t*2.6,t*1.3);
+    var fl=prof(u,sc)*ss(-.03,.1,s)*(1-ss(.93,1.12,s))*(.88+.12*flow(x*4.5,y*9-t*4.2,t*.7))*energy;
+    var bowl=heatB[i]*light*(.84+.16*Math.sin(t*rate[i]+ph[i]));
+    var rev=cl((fg*1.35-rv[i])/.22,0,1),f=Math.max(Math.min(fl,1),bowl)*rev;
+    f*=.92+.08*Math.sin(t*rate[i]*1.3+ph[i]*2);
+    var g=Math.exp(-(Math.pow(x/.8,2)+Math.pow((y-.1)/.85,2)))*gl*(.82+.18*flick+.25*burst);
+    var tw=.5+.5*Math.sin(t*(.7+r1[i]*2.5)+ph[i]),acc=false;
+    if(r2[i]<cl(g*1.25,0,1)){var gh=g*.4*(.4+.75*tw);if(gh>f)f=gh}
+    if(r3[i]>.98&&g>.1&&tw>.8&&f<.3){f=.3+.5*tw;acc=true}
+    if(sp[i]>f){f=sp[i];acc=false}
+    if(f<=EDG[0])continue;
+    var lv=0;while(lv<5&&f>=EDG[lv])lv++;
+    var gs=GRP[lv-1],ch=gs[(Math.floor(t*rate[i]*.35+ph[i]*3))&1];
+    if(edgeB[i]&&rev>.5&&sp[i]<=0&&!acc)ch=y>YR?'-':'=';
+    var col=acc?AR[Math.round(cl(f*1.15,0,1)*19)]:FR[Math.round(cl(f,0,1)*47)];
+    if(col!==last_fill){ctx.fillStyle=col;last_fill=col}
+    ctx.fillText(ch,c*CW,r*CH);
+  }
+}
+function start(){
+  var v=$('name').value.trim()||'Friend';
+  $('who').textContent='✨ '+v+' ✨';
+  $('welcome').style.display='none';$('scene').style.display='flex';
+  sparks=[];burst=0;setup();t0=last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(frame);
+}
+$('go').onclick=start;
+$('name').addEventListener('keydown',function(e){if(e.key==='Enter')start()});
+$('back').onclick=function(){cancelAnimationFrame(raf);$('scene').style.display='none';$('welcome').style.display='flex';$('name').focus()};
+var rt;window.addEventListener('resize',function(){if($('scene').style.display!=='flex')return;clearTimeout(rt);rt=setTimeout(setup,150)});
+})();
+</script>
+</body>
+</html>
